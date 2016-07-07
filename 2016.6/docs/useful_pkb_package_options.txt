@@ -1,0 +1,52 @@
+Useful options to pass in to the pkb.py script:
+
+Overall options:
+
+1) --cloud: specifies which cloud you are using for this test. Accepts a comma-delineated list I believe.
+
+2) --benchmark_config_file: allow you to specify a file with config overrides that will be passed to the tester when it runs the configuration.
+
+3) --os_type: this should be changed from debian, the default, to rhel (or Red Hat Enterprise Linux), which is the standard issued enterprise linux operating system used worldwide, and is free on AWS.
+
+4) --benchmarks: comma-delineated set of benchmarks that can be run on the cloud. If a benchmark cannot be run, then this is double checked as well.
+
+5) --ignore_package_requirements: need this in there because of some issues that might arise from the compatibility of the packages with the machine you are on. This should not set off any alarms when running the tests
+
+6) --file_log_level: level of output that is written to the file location in /var/folders. I would suggest keeping it as it is, where maximum output is printed to file, and then minimum is outputted to the screen for the user to skim.
+
+7) --machine_type: type of instance to create for those metrics where a certain one isn't necessary. This should be the best free-tier machine type for that cloud service provider.
+
+8) --zones: If we wish to test the benchmarks with virtual machines created globally, as opposed to just a single region somewhere, than we employ this zoning tool. However, I am not sure how to use this with more than one cloud provider; we might have to issue separate calls to create cloud machines in the various providers separately and then pool the data. 
+
+Benchmark options:
+
+Aerospike:
+Skipping aerospike because it is recommended for instances with > 2 GB RAM only.
+
+Fio:
+--fio_run_for_minutes: repeat the job for so many minutes. The job scenario is either sequential_read, sequential_write, random_read, and random_write.
+
+--fio_jobfile: we can craft a custom job file with our free instance testing parameters in order to not over-run our costs and to not touch the original library. The job file that we will use has the same options that was suggested from this website: https://www.binarylane.com.au/support/solutions/articles/1000055889-how-to-benchmark-disk-i-o, because it seems to do a well-rounded test of the system, and does not require a large block size, because the average user doesn't have a large
+virtual machine, and neither do we.
+
+Hadoop Terasort:
+--terasort_num_rows: How many 100 byte rows create in order to correctly sort them according to the algorithm that hadoop uses. I suggest we have a small number here, because our machines are small. A gigabyte is 1 billion bytes, so that leaves us with 100,000,000 rows we can use.
+
+I-Perf:
+--iperf_runtime_in_seconds: How long the test will be conducted for.
+
+--iperf_sending_thread_count: number of connections to make to the server for sending traffic, so how many open sockets should the test have in order to test the network. I think because we have little to moderate allowed network usage, it is best to keep this at 1, or maybe 2 at best if we want to test multi-threaded approaches.
+
+Publishing Options:
+
+--bigquery_table: the name of the table in BigQuery Table to publish results to. This we need to make hard coded for the dashboard to then bring up. We can then compare these tables for each provider separately. The format is [bq_project:]dataset_name.table_name
+
+--bq_path: This should be the location of the 'bq.py' file in the google sdk cloud api, which will be used to upload the table automatically to our cloud. 
+
+--bq_project: Name of the prioject id that we have, it is either phileas-1351 or phileas.
+
+--csv_path: If we want the data as a comma separated view, then we write it a file that we can then open in excel possibly. But I recommend we stick with the bigquery approach.
+
+--service_account: account username that we use for the cloud service.
+
+--service_account_private_key

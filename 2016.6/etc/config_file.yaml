@@ -1,0 +1,64 @@
+--- 
+results_location: ../etc/runs/
+project_id: phileas-1351
+dataset: cloud
+test_suite:
+  - cloud: AWS
+    globals:
+      machine_type: t2.micro
+      default_timeout: 600
+      zones: eu-central-1
+    tests:
+      - test: iperf
+        options:
+          iperf_runtime_in_seconds: 30
+      - test: fio
+        options:
+          fio_jobfile: ../lib/providers/AWS/config/fio.txt
+      - test: coremark
+      - test: ping
+      - test: unixbench
+  - cloud: gcp
+    tests:
+      - test: iperf
+        options:
+          iperf_runtime_in_seconds: 30
+      - test: fio
+        options:
+          fio_jobfile: ../lib/tests/fio/fio.txt
+      - test: coremark
+      - test: ping
+      - test: unixbench
+  - cloud: rackspace
+    tests:
+      - test: iperf
+        options:
+          iperf_runtime_in_seconds: 30
+      - test: fio
+        options:
+          fio_jobfile: ../lib/tests/fio/fio.txt
+      - test: coremark
+      - test: ping
+      - test: unixbench
+  - cloud: azure
+    tests:
+      - test: iperf
+        options:
+          iperf_runtime_in_seconds: 30
+      - test: fio
+        options:
+          fio_jobfile: ../lib/tests/fio/fio.txt
+      - test: coremark
+      - test: ping
+      - test: unixbench
+  - cloud: openstack
+    tests:
+      - test: iperf
+        options:
+          iperf_runtime_in_seconds: 30
+      - test: fio
+        options:
+          fio_jobfile: ../lib/tests/fio/fio.txt
+      - test: coremark
+      - test: ping
+      - test: unixbench
