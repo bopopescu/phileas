@@ -21,7 +21,7 @@ operate on the VM: boot, shutdown, etc.
 import json
 import threading
 import logging
-
+import pprint
 from perfkitbenchmarker import flags
 from perfkitbenchmarker import virtual_machine
 from perfkitbenchmarker import linux_virtual_machine
@@ -34,7 +34,7 @@ from perfkitbenchmarker.providers.alicloud import util
 from perfkitbenchmarker import providers
 
 FLAGS = flags.FLAGS
-NON_HVM_PREFIXES = ['t1', 's1', 's2', 's3', 'm1']
+NON_HVM_PREFIXES = ['n1', 't1', 's1', 's2', 's3', 'm1']
 
 DRIVE_START_LETTER = 'b'
 DEFAULT_DISK_SIZE = 500
@@ -54,6 +54,7 @@ SSH_PORT = 22
 
 
 NUM_LOCAL_VOLUMES = {
+    'ecs.n1.tiny': 4,
     'ecs.t1.small': 4,
     'ecs.s1.small': 4,
     'ecs.s1.medium': 4,
@@ -148,6 +149,7 @@ class AliVirtualMachine(virtual_machine.BaseVirtualMachine):
       allocatip_cmd = util.GetEncodedCmd(allocatip_cmd)
       stdout, _ = vm_util.IssueRetryableCommand(allocatip_cmd)
       response = json.loads(stdout)
+      logging.info(response)
       self.ip_address = response['EipAddress']
       self.eip_id = response['AllocationId']
 
@@ -274,8 +276,10 @@ class AliVirtualMachine(virtual_machine.BaseVirtualMachine):
       create_cmd.extend(disk_cmd)
 
     if FLAGS.ali_io_optimized is not None:
-      create_cmd.extend(['--IoOptimized optimized',
-                         '--SystemDiskCategory %s' % self.system_disk_type])
+      create_cmd.extend(['--IoOptimized optimized'])
+
+    if FLAGS.ali_system_disk_type is not None:
+      create_cmd.extend(['--SystemDiskCategory %s' % self.system_disk_type])
 
     if FLAGS.ali_use_vpc:
       create_cmd.extend(['--VpcId %s' % self.network.vpc.id,
@@ -289,6 +293,7 @@ class AliVirtualMachine(virtual_machine.BaseVirtualMachine):
     create_cmd = util.GetEncodedCmd(create_cmd)
     stdout, _ = vm_util.IssueRetryableCommand(create_cmd)
     response = json.loads(stdout)
+    logging.info(response)
     self.id = response['InstanceId']
 
     self._AllocatePubIp(self.region, self.id)

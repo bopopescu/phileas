@@ -19,6 +19,12 @@ flags.DEFINE_string('gcloud_path',
                     'The path for the gcloud utility.')
 flags.DEFINE_list('additional_gcloud_flags', [],
                   'Additional flags to pass to gcloud.')
+flags.DEFINE_integer('custom-cpu', None,
+                      'The number of cpus that you wish to add'
+                      'to the virtual machine')
+flags.DEFINE_integer('custom-memory', None,
+                      'The amount of memory that you wish to add'
+                      'to the virtual machine')
 flags.DEFINE_integer('gce_num_local_ssds', 0,
                      'The number of ssds that should be added to the VM. Note '
                      'that this is currently only supported in certain zones '

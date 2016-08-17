@@ -278,7 +278,7 @@ class GceVirtualMachine(virtual_machine.BaseVirtualMachine):
       cmd.flags['image-project'] = FLAGS.image_project
     cmd.flags['boot-disk-size'] = self.BOOT_DISK_SIZE_GB
     cmd.flags['boot-disk-type'] = self.BOOT_DISK_TYPE
-    if self.machine_type is None:
+    if (self.machine_type is None):
       cmd.flags['custom-cpu'] = self.cpus
       cmd.flags['custom-memory'] = '{0}MiB'.format(self.memory_mib)
     else:
@@ -418,7 +418,8 @@ class GceVirtualMachine(virtual_machine.BaseVirtualMachine):
     cmd.Issue()
 
   def AnnotateSample(self, unused_sender, benchmark_spec, sample):
-    sample['metadata']['preemptible'] = self.preemptible
+    return
+    #sample['metadata']['preemptible'] = self.preemptible
 
   def GetMachineTypeDict(self):
     """Returns a dict containing properties that specify the machine type.

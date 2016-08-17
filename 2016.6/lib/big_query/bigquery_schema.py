@@ -76,8 +76,7 @@ class BigQueryMaker:
 
     def determine_type(self, value):
         if (value == None):
-            raise Exception("No value found")
-            return
+            return "STRING"
         else:
             if (isinstance(value, int) and value != 0):
                 return "FLOAT"

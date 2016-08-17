@@ -21,7 +21,7 @@ the same project. See https://aws.amazon.com/documentation/vpc/
 for more information about AWS Virtual Private Clouds.
 """
 
-import json
+import json, pdb
 import logging
 import threading
 import uuid
@@ -278,16 +278,27 @@ class AwsInternetGateway(resource.BaseResource):
 
   def _Exists(self):
     """Returns true if the internet gateway exists."""
-    describe_cmd = util.AWS_PREFIX + [
-        'ec2',
-        'describe-internet-gateways',
-        '--region=%s' % self.region,
-        '--filter=Name=internet-gateway-id,Values=%s' % self.id]
-    stdout, _ = util.IssueRetryableCommand(describe_cmd)
-    response = json.loads(stdout)
-    internet_gateways = response['InternetGateways']
-    assert len(internet_gateways) < 2, 'Too many internet gateways.'
-    return len(internet_gateways) > 0
+    if (self.id is not None):
+        describe_cmd = util.AWS_PREFIX + [
+            'ec2',
+            'describe-internet-gateways',
+            '--region=%s' % self.region,
+            '--filter=Name=internet-gateway-id,Values=%s' % self.id]
+        stdout, _ = util.IssueRetryableCommand(describe_cmd)
+        response = json.loads(stdout)
+        internet_gateways = response['InternetGateways']
+        assert len(internet_gateways) < 2, 'Too many internet gateways.'
+        return len(internet_gateways) > 0
+    else:
+        describe_cmd = util.AWS_PREFIX + [
+            'ec2',
+            'describe-internet-gateways',
+            '--region=%s' % self.region,
+            ]
+        stdout, _ = util.IssueRetryableCommand(describe_cmd)
+        response = json.loads(stdout)
+        internet_gateways = response['InternetGateways']
+        return internet_gateways
 
   def Attach(self, vpc_id):
     """Attaches the internetgateway to the VPC."""
@@ -415,7 +426,6 @@ class AwsPlacementGroup(resource.BaseResource):
 
 class _AwsRegionalNetwork(network.BaseNetwork):
   """Object representing regional components of an AWS network.
-
   The benchmark spec contains one instance of this class per region, which an
   AwsNetwork may retrieve or create via _AwsRegionalNetwork.GetForRegion.
 
@@ -481,7 +491,6 @@ class _AwsRegionalNetwork(network.BaseNetwork):
         return
 
       self.vpc.Create()
-
       self.internet_gateway.Create()
       self.internet_gateway.Attach(self.vpc.id)
 
@@ -543,10 +552,11 @@ class AwsNetwork(network.BaseNetwork):
 
   def Delete(self):
     """Deletes the network."""
-    if self.subnet:
-      self.subnet.Delete()
     self.placement_group.Delete()
     self.regional_network.Delete()
+    if self.subnet:
+      self.subnet.Delete()
+
 
   @classmethod
   def _GetKeyFromNetworkSpec(cls, spec):

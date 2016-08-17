@@ -97,7 +97,7 @@ def _RunIperf(sending_vm, receiving_vm, receiving_ip_address, ip_type):
   Returns:
     A Sample.
   """
-  iperf_cmd = ('iperf --client %s --port %s --format m --time %s -P %s' %
+  iperf_cmd = ('iperf --client %s --port %s --format m --time %s -P %s -o 3' %
                (receiving_ip_address, IPERF_PORT,
                 FLAGS.iperf_runtime_in_seconds,
                 FLAGS.iperf_sending_thread_count))
