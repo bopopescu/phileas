@@ -4,8 +4,8 @@ import argparse, sys, os, subprocess, pickle, re, glob
 sys.path.append('../lib')
 import time, pprint
 import yaml
-from big_query.bigquery_object import BigQueryObject
-from big_query.bigquery_schema import BigQueryMaker
+#from big_query.bigquery_object import BigQueryObject
+#from big_query.bigquery_schema import BigQueryMaker
 #from util.mail import Mailer
 from threading import Thread
 
@@ -42,6 +42,7 @@ def execute(cloud_provider, results_location, project_id, dataset, mailer=None):
             sys.exit(1)
     tests = list(args.tests)
     filepath = results_location + '/results.' + args.output
+    '''
     if (args.output == 'json'):
         schema_cmd = extract_schema(results_location, cloud_provider['cloud'], tests)
         if (schema_cmd is not True):
@@ -51,8 +52,9 @@ def execute(cloud_provider, results_location, project_id, dataset, mailer=None):
                 success = export_results(cloud_provider['cloud'], filepath, test, project_id, dataset)
                 if (success is not True):
                     raise Exception("Something went wrong with loading the data into the cloud. Exiting...\nERROR:" + str(success))
-    #mailer.attach_files([filepath])
-
+    mailer.attach_files([filepath])
+    '''
+    '''
 def export_results(cloud_provider, results_location, test, project_id, dataset):
     bq = BigQueryObject(project_id)
     if bq.check_dataset(dataset) is not True:
@@ -74,6 +76,7 @@ def extract_schema(results_location, cloud, tests):
         print str(e)
         return False
     return True
+    '''
 
 def run(command, output_loc):
     output_out = output_loc + '/' + 'pkb_std.out'
