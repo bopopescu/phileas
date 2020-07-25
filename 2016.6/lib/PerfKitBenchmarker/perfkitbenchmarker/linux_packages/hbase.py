@@ -66,13 +66,13 @@ def AptInstall(vm):
   _Install(vm)
 
 
-def _RenderConfig(vm, master_ip, zk_ips, regionserver_ips):
+def _RenderConfig(vm, main_ip, zk_ips, regionserver_ips):
   # Use the same heap configuration as Cassandra
   memory_mb = vm.total_memory_kb // 1024
   hbase_memory_mb = max(min(memory_mb // 2, 1024),
                         min(memory_mb // 4, 8192))
   context = {
-      'master_ip': master_ip,
+      'main_ip': main_ip,
       'worker_ips': regionserver_ips,
       'zk_quorum_ips': zk_ips,
       'hadoop_private_key': hadoop.HADOOP_PRIVATE_KEY,
@@ -90,14 +90,14 @@ def _RenderConfig(vm, master_ip, zk_ips, regionserver_ips):
       vm.RemoteCopy(file_path, remote_path)
 
 
-def ConfigureAndStart(master, regionservers, zk_nodes):
+def ConfigureAndStart(main, regionservers, zk_nodes):
   """Configure HBase on a cluster.
 
   Args:
-    master: VM. Master VM.
+    main: VM. Main VM.
     regionservers: List of VMs.
   """
-  vms = [master] + regionservers
+  vms = [main] + regionservers
 
   def LinkNativeLibraries(vm):
     vm.RemoteCommand(('mkdir {0}/lib/native && '
@@ -105,22 +105,22 @@ def ConfigureAndStart(master, regionservers, zk_nodes):
                           HBASE_DIR,
                           posixpath.join(hadoop.HADOOP_DIR, 'lib', 'native')))
   vm_util.RunThreaded(LinkNativeLibraries, vms)
-  fn = functools.partial(_RenderConfig, master_ip=master.internal_ip,
+  fn = functools.partial(_RenderConfig, main_ip=main.internal_ip,
                          zk_ips=[vm.internal_ip for vm in zk_nodes],
                          regionserver_ips=[regionserver.internal_ip
                                            for regionserver in regionservers])
   vm_util.RunThreaded(fn, vms)
 
-  master.RemoteCommand('{0} dfs -mkdir /hbase'.format(
+  main.RemoteCommand('{0} dfs -mkdir /hbase'.format(
       posixpath.join(hadoop.HADOOP_BIN, 'hdfs')))
 
-  master.RemoteCommand(posixpath.join(HBASE_BIN, 'start-hbase.sh'))
+  main.RemoteCommand(posixpath.join(HBASE_BIN, 'start-hbase.sh'))
 
 
-def Stop(master):
+def Stop(main):
   """Stop HBase.
 
   Args:
-    master: VM. Master VM.
+    main: VM. Main VM.
   """
-  master.RemoteCommand(posixpath.join(HBASE_BIN, 'stop-hbase.sh'))
+  main.RemoteCommand(posixpath.join(HBASE_BIN, 'stop-hbase.sh'))

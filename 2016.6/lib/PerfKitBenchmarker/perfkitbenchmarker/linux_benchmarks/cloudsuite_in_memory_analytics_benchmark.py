@@ -41,7 +41,7 @@ cloudsuite_in_memory_analytics:
     Run Cloudsuite in-memory analytics benchmark. Specify the number of worker
     VMs with --num_vms.
   vm_groups:
-    master:
+    main:
       vm_spec: *default_single_core
       vm_count: 1
     workers:
@@ -57,13 +57,13 @@ def GetConfig(user_config):
 
 
 def Prepare(benchmark_spec):
-  """Install docker. Pull images. Create datasets. Start master and workers.
+  """Install docker. Pull images. Create datasets. Start main and workers.
 
   Args:
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
   """
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
   workers = benchmark_spec.vm_groups['workers']
 
   def PrepareCommon(vm):
@@ -74,23 +74,23 @@ def Prepare(benchmark_spec):
     vm.RemoteCommand('sudo docker create --name data '
                      'cloudsuite/movielens-dataset')
 
-  def PrepareMaster(vm):
+  def PrepareMain(vm):
     PrepareCommon(vm)
     vm.RemoteCommand('sudo docker pull cloudsuite/in-memory-analytics')
-    start_master_cmd = ('sudo docker run -d --net host -e SPARK_MASTER_IP=%s '
-                        '--name spark-master cloudsuite/spark master' %
-                        master.internal_ip)
-    vm.RemoteCommand(start_master_cmd)
+    start_main_cmd = ('sudo docker run -d --net host -e SPARK_MASTER_IP=%s '
+                        '--name spark-main cloudsuite/spark main' %
+                        main.internal_ip)
+    vm.RemoteCommand(start_main_cmd)
 
   def PrepareWorker(vm):
     PrepareCommon(vm)
     start_worker_cmd = ('sudo docker run -d --net host --volumes-from data '
                         '--name spark-worker cloudsuite/spark worker '
-                        'spark://%s:7077' % master.internal_ip)
+                        'spark://%s:7077' % main.internal_ip)
     vm.RemoteCommand(start_worker_cmd)
 
   target_arg_tuples = ([(PrepareWorker, [vm], {}) for vm in workers] +
-                       [(PrepareMaster, [master], {})])
+                       [(PrepareMain, [main], {})])
   vm_util.RunParallelThreads(target_arg_tuples, len(target_arg_tuples))
 
 
@@ -104,16 +104,16 @@ def Run(benchmark_spec):
   Returns:
     A list of sample.Sample objects.
   """
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
   results = []
 
   benchmark_cmd = ('sudo docker run --rm --net host --volumes-from data '
                    'cloudsuite/in-memory-analytics %s %s '
-                   '--master spark://%s:7077' %
+                   '--main spark://%s:7077' %
                    (FLAGS.cloudsuite_in_memory_analytics_dataset,
                     FLAGS.cloudsuite_in_memory_analytics_ratings_file,
-                    master.internal_ip))
-  stdout, _ = master.RemoteCommand(benchmark_cmd, should_log=True)
+                    main.internal_ip))
+  stdout, _ = main.RemoteCommand(benchmark_cmd, should_log=True)
 
   matches = re.findall(r'Benchmark execution time: (\d+)ms', stdout)
   if len(matches) != 1:
@@ -134,7 +134,7 @@ def Cleanup(benchmark_spec):
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
   """
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
   workers = benchmark_spec.vm_groups['workers']
 
   def CleanupCommon(vm):
@@ -142,9 +142,9 @@ def Cleanup(benchmark_spec):
     vm.RemoteCommand('sudo docker rmi cloudsuite/movielens-dataset')
     vm.RemoteCommand('sudo docker rmi cloudsuite/spark')
 
-  def CleanupMaster(vm):
-    vm.RemoteCommand('sudo docker stop spark-master')
-    vm.RemoteCommand('sudo docker rm spark-master')
+  def CleanupMain(vm):
+    vm.RemoteCommand('sudo docker stop spark-main')
+    vm.RemoteCommand('sudo docker rm spark-main')
     vm.RemoteCommand('sudo docker rmi cloudsuite/in-memory-analytics')
     CleanupCommon(vm)
 
@@ -154,5 +154,5 @@ def Cleanup(benchmark_spec):
     CleanupCommon(vm)
 
   target_arg_tuples = ([(CleanupWorker, [vm], {}) for vm in workers] +
-                       [(CleanupMaster, [master], {})])
+                       [(CleanupMain, [main], {})])
   vm_util.RunParallelThreads(target_arg_tuples, len(target_arg_tuples))

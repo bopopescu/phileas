@@ -41,7 +41,7 @@ BENCHMARK_CONFIG = """
 hadoop_terasort:
   description: Runs Terasort. Control the number of worker VMs with --num_vms.
   vm_groups:
-    master:
+    main:
       vm_spec: *default_single_core
       disk_spec: *default_500_gb
     workers:
@@ -77,14 +77,14 @@ def Prepare(benchmark_spec):
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
   """
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
   workers = benchmark_spec.vm_groups['workers']
   vms = benchmark_spec.vms
 
   def InstallHadoop(vm):
     vm.Install('hadoop')
   vm_util.RunThreaded(InstallHadoop, vms)
-  hadoop.ConfigureAndStart(master, workers)
+  hadoop.ConfigureAndStart(main, workers)
 
 
 def Run(benchmark_spec):
@@ -98,7 +98,7 @@ def Run(benchmark_spec):
     A list of sample.Sample instances.
   """
   vms = benchmark_spec.vms
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
 
   mapreduce_example_jar = posixpath.join(
       hadoop.HADOOP_DIR, 'share', 'hadoop', 'mapreduce',
@@ -106,20 +106,20 @@ def Run(benchmark_spec):
   hadoop_cmd = '{0} jar {1}'.format(
       posixpath.join(hadoop.HADOOP_BIN, 'yarn'),
       mapreduce_example_jar)
-  master.RobustRemoteCommand('{0} teragen {1} /teragen'.format(
+  main.RobustRemoteCommand('{0} teragen {1} /teragen'.format(
       hadoop_cmd, FLAGS.terasort_num_rows))
   num_cpus = sum(vm.num_cpus for vm in vms[1:])
   start_time = time.time()
-  stdout, _ = master.RobustRemoteCommand(
+  stdout, _ = main.RobustRemoteCommand(
       hadoop_cmd + ' terasort /teragen /terasort')
   logging.info('Terasort output: %s', stdout)
   time_elapsed = time.time() - start_time
   data_processed_in_mbytes = FLAGS.terasort_num_rows * NUM_MB_PER_ROW
-  master.RobustRemoteCommand(
+  main.RobustRemoteCommand(
       hadoop_cmd + ' teravalidate /terasort /teravalidate')
 
   # Clean up
-  master.RemoteCommand(
+  main.RemoteCommand(
       '{0} dfs -rm -r -f /teragen /teravalidate /terasort'.format(
           posixpath.join(hadoop.HADOOP_BIN, 'hdfs')))
 
@@ -140,8 +140,8 @@ def Cleanup(benchmark_spec):
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
   """
-  master = benchmark_spec.vm_groups['master'][0]
+  main = benchmark_spec.vm_groups['main'][0]
   workers = benchmark_spec.vm_groups['workers']
   logging.info('Stopping Hadoop.')
-  hadoop.StopAll(master)
+  hadoop.StopAll(main)
   vm_util.RunThreaded(hadoop.CleanDatanode, workers)

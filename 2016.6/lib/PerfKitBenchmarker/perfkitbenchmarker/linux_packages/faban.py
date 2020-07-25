@@ -53,7 +53,7 @@ def Start(vm):
   vm.AllowPort(FABAN_PORT)
   vm.RemoteCommand('cd {0} && '
                    'export JAVA_HOME={1} && '
-                   'master/bin/startup.sh'.format(
+                   'main/bin/startup.sh'.format(
                        FABAN_HOME_DIR, JAVA_HOME))
 
 
@@ -61,7 +61,7 @@ def Stop(vm):
   """Stops the Faban on the VM."""
   vm.RemoteCommand('cd {0} && '
                    'export JAVA_HOME={1} && '
-                   'master/bin/shutdown.sh'.format(
+                   'main/bin/shutdown.sh'.format(
                        FABAN_HOME_DIR, JAVA_HOME))
 
 
@@ -78,7 +78,7 @@ def StopRegistry(vm):
 
 
 def StartAgent(vm, classpath, driver_dir, driver_class, agent_id,
-               java_heap_size, policy_path, faban_master):
+               java_heap_size, policy_path, faban_main):
   """Runs Registry on faban client."""
   vm.RobustRemoteCommand('export FABAN_HOME={6} && '
                          'java -classpath {5} -Xmx{0} -Xms{0} '
@@ -86,14 +86,14 @@ def StartAgent(vm, classpath, driver_dir, driver_class, agent_id,
                          'com.sun.faban.driver.engine.AgentImpl'
                          ' {2} {3} {4} &'.format(
                              java_heap_size, policy_path, driver_class,
-                             agent_id, faban_master, classpath, FABAN_HOME_DIR))
+                             agent_id, faban_main, classpath, FABAN_HOME_DIR))
   time.sleep(3)
 
 
-def StartMaster(vm, classpath, java_heap_size, policy_path, benchmark_config):
+def StartMain(vm, classpath, java_heap_size, policy_path, benchmark_config):
   vm.RemoteCommand('export FABAN_HOME={4} && '
                    'java -classpath {3} -Xmx{0} -Xms{0} '
                    '-Djava.security.policy={1} -Dbenchmark.config={2} '
-                   'com.sun.faban.driver.engine.MasterImpl'.format(
+                   'com.sun.faban.driver.engine.MainImpl'.format(
                        java_heap_size, policy_path, benchmark_config,
                        classpath, FABAN_HOME_DIR))

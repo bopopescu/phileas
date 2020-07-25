@@ -33,7 +33,7 @@ HADOOP_URL = ('http://www.us.apache.org/dist/hadoop/common/hadoop-{0}/'
 
 DATA_FILES = ['hadoop/core-site.xml.j2', 'hadoop/yarn-site.xml.j2',
               'hadoop/hdfs-site.xml', 'hadoop/mapred-site.xml',
-              'hadoop/hadoop-env.sh.j2', 'hadoop/slaves.j2']
+              'hadoop/hadoop-env.sh.j2', 'hadoop/subordinates.j2']
 START_HADOOP_SCRIPT = 'hadoop/start-hadoop.sh.j2'
 
 HADOOP_DIR = posixpath.join(vm_util.VM_TMP_DIR, 'hadoop')
@@ -74,10 +74,10 @@ def AptInstall(vm):
 
 
 # TODO: revisit memory fraction.
-def _RenderConfig(vm, master_ip, worker_ips, memory_fraction=0.9):
+def _RenderConfig(vm, main_ip, worker_ips, memory_fraction=0.9):
   yarn_memory_mb = int((vm.total_memory_kb / 1024) * memory_fraction)
   context = {
-      'master_ip': master_ip,
+      'main_ip': main_ip,
       'worker_ips': worker_ips,
       'scratch_dir': posixpath.join(vm.GetScratchDir(), 'hadoop'),
       'vcpus': vm.num_cpus,
@@ -95,38 +95,38 @@ def _RenderConfig(vm, master_ip, worker_ips, memory_fraction=0.9):
       vm.RemoteCopy(file_path, remote_path)
 
 
-def _GetHDFSOnlineNodeCount(master):
+def _GetHDFSOnlineNodeCount(main):
   cmd = '{0} dfsadmin -report'.format(posixpath.join(HADOOP_BIN, 'hdfs'))
-  stdout = master.RemoteCommand(cmd)[0]
+  stdout = main.RemoteCommand(cmd)[0]
   avail_str = regex_util.ExtractGroup(r'Live datanodes\s+\((\d+)\):', stdout)
   return int(avail_str)
 
 
-def _GetYARNOnlineNodeCount(master):
+def _GetYARNOnlineNodeCount(main):
   cmd = '{0} node -list -all'.format(posixpath.join(HADOOP_BIN, 'yarn'))
-  stdout = master.RemoteCommand(cmd)[0]
+  stdout = main.RemoteCommand(cmd)[0]
   return len(re.findall(r'RUNNING', stdout))
 
 
-def ConfigureAndStart(master, workers, start_yarn=True):
+def ConfigureAndStart(main, workers, start_yarn=True):
   """Configure hadoop on a cluster.
 
   Args:
-    master: VM. Master VM - will be the HDFS NameNode, YARN ResourceManager.
+    main: VM. Main VM - will be the HDFS NameNode, YARN ResourceManager.
     workers: List of VMs. Each VM will run an HDFS DataNode, YARN node.
     start_yarn: bool. Start YARN and JobHistory server? Set to False if HDFS is
         the only service required. Default: True.
   """
-  vms = [master] + workers
-  fn = functools.partial(_RenderConfig, master_ip=master.internal_ip,
+  vms = [main] + workers
+  fn = functools.partial(_RenderConfig, main_ip=main.internal_ip,
                          worker_ips=[worker.internal_ip for worker in workers])
   vm_util.RunThreaded(fn, vms)
 
-  master.RemoteCommand(
+  main.RemoteCommand(
       "rm -f {0} && ssh-keygen -q -t rsa -N '' -f {0}".format(
           HADOOP_PRIVATE_KEY))
 
-  public_key = master.RemoteCommand('cat {0}.pub'.format(HADOOP_PRIVATE_KEY))[0]
+  public_key = main.RemoteCommand('cat {0}.pub'.format(HADOOP_PRIVATE_KEY))[0]
 
   def AddKey(vm):
     vm.RemoteCommand('echo "{0}" >> ~/.ssh/authorized_keys'.format(public_key))
@@ -138,15 +138,15 @@ def ConfigureAndStart(master, workers, start_yarn=True):
 
   # HDFS setup and formatting, YARN startup
   script_path = posixpath.join(HADOOP_DIR, 'start-hadoop.sh')
-  master.RenderTemplate(data.ResourcePath(START_HADOOP_SCRIPT),
+  main.RenderTemplate(data.ResourcePath(START_HADOOP_SCRIPT),
                         script_path, context=context)
-  master.RemoteCommand('bash {0}'.format(script_path), should_log=True)
+  main.RemoteCommand('bash {0}'.format(script_path), should_log=True)
 
   logging.info('Sleeping 10s for Hadoop nodes to join.')
   time.sleep(10)
 
   logging.info('Checking HDFS status.')
-  hdfs_online_count = _GetHDFSOnlineNodeCount(master)
+  hdfs_online_count = _GetHDFSOnlineNodeCount(main)
   if hdfs_online_count != len(workers):
     raise ValueError('Not all nodes running HDFS: {0} < {1}'.format(
         hdfs_online_count, len(workers)))
@@ -155,7 +155,7 @@ def ConfigureAndStart(master, workers, start_yarn=True):
 
   if start_yarn:
     logging.info('Checking YARN status.')
-    yarn_online_count = _GetYARNOnlineNodeCount(master)
+    yarn_online_count = _GetYARNOnlineNodeCount(main)
     if yarn_online_count != len(workers):
       raise ValueError('Not all nodes running YARN: {0} < {1}'.format(
           yarn_online_count, len(workers)))
@@ -163,31 +163,31 @@ def ConfigureAndStart(master, workers, start_yarn=True):
       logging.info('YARN running on all %d workers', len(workers))
 
 
-def StopYARN(master):
+def StopYARN(main):
   """Stop YARN on all nodes."""
-  master.RemoteCommand(posixpath.join(HADOOP_SBIN, 'stop-yarn.sh'))
+  main.RemoteCommand(posixpath.join(HADOOP_SBIN, 'stop-yarn.sh'))
 
 
-def StopHDFS(master):
+def StopHDFS(main):
   """Stop HDFS on all nodes."""
-  master.RemoteCommand(posixpath.join(HADOOP_SBIN, 'stop-dfs.sh'))
+  main.RemoteCommand(posixpath.join(HADOOP_SBIN, 'stop-dfs.sh'))
 
 
-def StopHistoryServer(master):
+def StopHistoryServer(main):
   """Stop the MapReduce JobHistory daemon."""
-  master.RemoteCommand('{0} stop historyserver'.format(
+  main.RemoteCommand('{0} stop historyserver'.format(
       posixpath.join(HADOOP_SBIN, 'mr-jobhistory-daemon.sh')))
 
 
-def StopAll(master):
+def StopAll(main):
   """Stop HDFS and YARN.
 
   Args:
-    master: VM. HDFS NameNode/YARN ResourceManager.
+    main: VM. HDFS NameNode/YARN ResourceManager.
   """
-  StopHistoryServer(master)
-  StopYARN(master)
-  StopHDFS(master)
+  StopHistoryServer(main)
+  StopYARN(main)
+  StopHDFS(main)
 
 
 def CleanDatanode(vm):

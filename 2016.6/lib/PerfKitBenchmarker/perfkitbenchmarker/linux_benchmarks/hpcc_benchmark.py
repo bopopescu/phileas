@@ -91,13 +91,13 @@ def CreateMachineFile(vms):
     vms: The list of vms which will be in the cluster.
   """
   with vm_util.NamedTemporaryFile() as machine_file:
-    master_vm = vms[0]
-    machine_file.write('localhost slots=%d\n' % master_vm.num_cpus)
+    main_vm = vms[0]
+    machine_file.write('localhost slots=%d\n' % main_vm.num_cpus)
     for vm in vms[1:]:
       machine_file.write('%s slots=%d\n' % (vm.internal_ip,
                                             vm.num_cpus))
     machine_file.close()
-    master_vm.PushFile(machine_file.name, MACHINEFILE)
+    main_vm.PushFile(machine_file.name, MACHINEFILE)
 
 
 def CreateHpccinf(vm, benchmark_spec):
@@ -151,17 +151,17 @@ def Prepare(benchmark_spec):
         required to run the benchmark.
   """
   vms = benchmark_spec.vms
-  master_vm = vms[0]
+  main_vm = vms[0]
 
-  PrepareHpcc(master_vm)
-  CreateHpccinf(master_vm, benchmark_spec)
+  PrepareHpcc(main_vm)
+  CreateHpccinf(main_vm, benchmark_spec)
   CreateMachineFile(vms)
-  master_vm.RemoteCommand('cp %s/hpcc hpcc' % hpcc.HPCC_DIR)
+  main_vm.RemoteCommand('cp %s/hpcc hpcc' % hpcc.HPCC_DIR)
 
   for vm in vms[1:]:
     vm.Install('fortran')
-    master_vm.MoveFile(vm, 'hpcc', 'hpcc')
-    master_vm.MoveFile(vm, '/usr/bin/orted', 'orted')
+    main_vm.MoveFile(vm, 'hpcc', 'hpcc')
+    main_vm.MoveFile(vm, '/usr/bin/orted', 'orted')
     vm.RemoteCommand('sudo mv orted /usr/bin/orted')
 
 
@@ -213,15 +213,15 @@ def Run(benchmark_spec):
     A list of sample.Sample objects.
   """
   vms = benchmark_spec.vms
-  master_vm = vms[0]
-  num_processes = len(vms) * master_vm.num_cpus
+  main_vm = vms[0]
+  num_processes = len(vms) * main_vm.num_cpus
 
   mpi_cmd = ('mpirun -np %s -machinefile %s --mca orte_rsh_agent '
              '"ssh -o StrictHostKeyChecking=no" ./hpcc' %
              (num_processes, MACHINEFILE))
-  master_vm.RobustRemoteCommand(mpi_cmd)
+  main_vm.RobustRemoteCommand(mpi_cmd)
   logging.info('HPCC Results:')
-  stdout, _ = master_vm.RemoteCommand('cat hpccoutf.txt', should_log=True)
+  stdout, _ = main_vm.RemoteCommand('cat hpccoutf.txt', should_log=True)
 
   return ParseOutput(stdout, benchmark_spec)
 
@@ -234,9 +234,9 @@ def Cleanup(benchmark_spec):
         required to run the benchmark.
   """
   vms = benchmark_spec.vms
-  master_vm = vms[0]
-  master_vm.RemoveFile('hpcc*')
-  master_vm.RemoveFile(MACHINEFILE)
+  main_vm = vms[0]
+  main_vm.RemoveFile('hpcc*')
+  main_vm.RemoveFile(MACHINEFILE)
 
   for vm in vms[1:]:
     vm.RemoveFile('hpcc')

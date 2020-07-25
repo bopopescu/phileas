@@ -49,7 +49,7 @@ class GcpDataproc(spark_service.BaseSparkService):
     cmd.flags['num-workers'] = self.num_workers
     if self.machine_type:
       cmd.flags['worker-machine-type'] = self.machine_type
-      cmd.flags['master-machine-type'] = self.machine_type
+      cmd.flags['main-machine-type'] = self.machine_type
     cmd.Issue()
 
   def _Delete(self):

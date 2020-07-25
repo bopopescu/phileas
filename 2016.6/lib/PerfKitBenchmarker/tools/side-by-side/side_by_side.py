@@ -16,7 +16,7 @@
 # -*- coding: utf-8 -*-
 """Runs a side-by-side comparison of two PerfKitBenchmarker revisions.
 
-Given a pair of revisions (e.g., 'dev', 'master') and command-line arguments,
+Given a pair of revisions (e.g., 'dev', 'main') and command-line arguments,
 this tool runs 'pkb.py' with for each and creates a report showing the
 differences in the results between the two runs.
 """
@@ -339,7 +339,7 @@ def main():
       description=__doc__)
   p.add_argument('-t', '--title', default='PerfKitBenchmarker Comparison',
                  help="""HTML report title""")
-  p.add_argument('--base', default='master', help="""Base revision.""")
+  p.add_argument('--base', default='main', help="""Base revision.""")
   p.add_argument('--head', default='dev', help="""Head revision.""")
   p.add_argument('--base-flags', default=None, help="""Flags for run against
                  '--base' revision. Will be combined with --flags.""",

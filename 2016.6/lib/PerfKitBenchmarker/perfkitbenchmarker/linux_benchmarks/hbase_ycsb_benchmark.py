@@ -21,18 +21,18 @@ https://hbase.apache.org/
 A running installation consists of:
   * An HDFS NameNode.
   * HDFS DataNodes.
-  * An HBase master node.
+  * An HBase main node.
   * HBase regionservers.
   * A zookeeper cluster (https://zookeeper.apache.org/).
 
 See: http://hbase.apache.org/book.html#_distributed.
 
 This benchmark provisions:
-  * A single node functioning as HDFS NameNode, HBase master, and zookeeper
+  * A single node functioning as HDFS NameNode, HBase main, and zookeeper
     quorum member.
   * '--num_vms - 1' nodes serving as both HDFS DataNodes and HBase region
     servers (so region servers and data are co-located).
-By default only the master node runs Zookeeper. Some regionservers may be added
+By default only the main node runs Zookeeper. Some regionservers may be added
 to the zookeeper quorum with the --hbase_zookeeper_nodes flag.
 
 
@@ -69,7 +69,7 @@ hbase_ycsb:
   vm_groups:
     clients:
       vm_spec: *default_single_core
-    master:
+    main:
       vm_spec: *default_single_core
       disk_spec: *default_500_gb
     workers:
@@ -139,23 +139,23 @@ def CreateYCSBTable(vm, table_name=TABLE_NAME, family=COLUMN_FAMILY,
 def _GetVMsByRole(vm_groups):
   """Partition "vms" by role in the benchmark.
 
-  * The first VM is the master.
+  * The first VM is the main.
   * The first FLAGS.hbase_zookeeper_nodes form the Zookeeper quorum.
   * The last FLAGS.ycsb_client_vms are loader nodes.
-  * The nodes which are neither the master nor loaders are HBase region servers.
+  * The nodes which are neither the main nor loaders are HBase region servers.
 
   Args:
     vm_groups: The benchmark_spec's vm_groups dict.
 
   Returns:
-    A dictionary with keys 'vms', 'hbase_vms', 'master', 'zk_quorum', 'workers',
+    A dictionary with keys 'vms', 'hbase_vms', 'main', 'zk_quorum', 'workers',
     and 'clients'.
   """
-  hbase_vms = vm_groups['master'] + vm_groups['workers']
+  hbase_vms = vm_groups['main'] + vm_groups['workers']
   vms = hbase_vms + vm_groups['clients']
   return {'vms': vms,
           'hbase_vms': hbase_vms,
-          'master': vm_groups['master'][0],
+          'main': vm_groups['main'][0],
           'zk_quorum': hbase_vms[:FLAGS.hbase_zookeeper_nodes],
           'workers': vm_groups['workers'],
           'clients': vm_groups['clients']}
@@ -176,7 +176,7 @@ def Prepare(benchmark_spec):
   # HBase cluster
   hbase_vms = by_role['hbase_vms']
   assert hbase_vms, 'No HBase VMs: {0}'.format(by_role)
-  master = by_role['master']
+  main = by_role['main']
   zk_quorum = by_role['zk_quorum']
   assert zk_quorum, 'No zookeeper quorum: {0}'.format(by_role)
   workers = by_role['workers']
@@ -189,13 +189,13 @@ def Prepare(benchmark_spec):
 
   vm_util.RunThreaded(lambda f: f(), hbase_install_fns + ycsb_install_fns)
 
-  hadoop.ConfigureAndStart(master, workers, start_yarn=False)
-  hbase.ConfigureAndStart(master, workers, zk_quorum)
+  hadoop.ConfigureAndStart(main, workers, start_yarn=False)
+  hbase.ConfigureAndStart(main, workers, zk_quorum)
 
-  CreateYCSBTable(master, use_snappy=FLAGS.hbase_use_snappy)
+  CreateYCSBTable(main, use_snappy=FLAGS.hbase_use_snappy)
 
   # Populate hbase-site.xml on the loaders.
-  master.PullFile(
+  main.PullFile(
       vm_util.GetTempDir(),
       posixpath.join(hbase.HBASE_CONF_DIR, HBASE_SITE))
 
@@ -259,6 +259,6 @@ def Cleanup(benchmark_spec):
         required to run the benchmark.
   """
   by_role = _GetVMsByRole(benchmark_spec.vm_groups)
-  hbase.Stop(by_role['master'])
-  hadoop.StopHDFS(by_role['master'])
+  hbase.Stop(by_role['main'])
+  hadoop.StopHDFS(by_role['main'])
   vm_util.RunThreaded(hadoop.CleanDatanode, by_role['workers'])
